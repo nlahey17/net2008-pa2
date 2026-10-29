@@ -107,7 +107,9 @@ def device_violations(device, policy): #Tier 2
 	if policy.get("require_owner") is True and device.owner == "":
 		violations.append({"device": device.id, "type": "missing_owner"})
 
-			#TODO too_many_down
+	down_count = device.interfaces_down()
+	if "max_down_interfaces" in policy and down_count > policy ["max_down_interfaces"]:
+		violations.append({"device": device.id, "type": "too_many_down", "down": down_count})
 
 	return violations
 
