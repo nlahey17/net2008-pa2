@@ -104,10 +104,12 @@ def device_violations(device, policy): #Tier 2
 			violations.append({"device": device.id, "type": "unknown_role", "role": device.role})
 			return violations
 
-		if policy.get("require_owner") is True and device.owner == "":
-			violations.append({"deivce": device.id, "type": "missing_owner"})
-			#TODO missing_owner, too_many_down
-		return violations
+	if policy.get("require_owner") is True and device.owner == "":
+		violations.append({"device": device.id, "type": "missing_owner"})
+
+			#TODO too_many_down
+
+	return violations
 
 def build_report(site, devices, skipped, policy): #Tier 1 + 2
 	"""Build the audit report dictionary from the devices and policy files"""
