@@ -15,10 +15,10 @@ from pathlib import Path
 import yaml
 
 
-class AuditError(Exception):
+class AuditError(Exception): #Tier 1
 	"""Raised if input is missing or broken"""
 
-class Device:
+class Device: #Tier 1
 	"Base network device class"
 
 	def __init__(self, device_id, role, os_version):
@@ -39,7 +39,7 @@ class Device:
 
 		return self.interface_status.count("down")
 
-def parse_device(elem):
+def parse_device(elem): #Tier 1
 	"""Converts a device xml element into a device object, or 
 	none if no id is present"""
 
@@ -55,7 +55,7 @@ def parse_device(elem):
 		device.interface_status.append(interface.get("status", ""))
 	return device
 		
-def load_inventory(path):
+def load_inventory(path): #Tier 1
 	"""Reads the given inventory xml and returns site, devices, 
 	and skipped devices or raises AuditError if file is missing or invalid xml"""
 
@@ -77,7 +77,7 @@ def load_inventory(path):
 			devices.append(device)
 	return root.get("site"), devices, skipped
 
-def load_policy(path): 
+def load_policy(path): #Tier 1
 	"""Read the policy yaml, return as dict
 	Raises AuditError when file is missing or invalid"""
 
@@ -94,10 +94,22 @@ def load_policy(path):
 	
 	return data
 
-def build_report(site, devices, skipped, policy):
+def device_violations(device, policy): #Tier 2
+	"""Returns a list of violations for a device"""
+
+	violations = []
+
+	if "min_os" in policy: #unknown roles don't get checked for min os
+		if device.role not in policy["min_os"]:
+			violations.append({"device": device.id, "type": "unknown_role", "role": device.role})
+		return violations
+		#TODO missing_owner, too_many_down
+		return violations
+
+def build_report(site, devices, skipped, policy): #Tier 1 + 2
 	"""Build the audit report dictionary from the devices and policy files"""
 
-	roles = {}
+	roles = {} #Tier 1
 	interfaces = {"up": 0, "down": 0, "other": 0}
 	for device in devices:
 		roles[device.role] = roles.get(device.role, 0) + 1
@@ -109,25 +121,34 @@ def build_report(site, devices, skipped, policy):
 			else:
 				interfaces["other"] = interfaces["other"] + 1
 
+	violations = []
+	compliant = []
+	for device in devices: #Tier 2
+		found = device_violations(device, policy)
+		violations = violations + found #adds violation of a device in the loop
+		if not found:
+			compliant.append(device.id)
+	compliant.sort()
+
 	return {
 	"site": site, 
 	"total_devices": len(devices),
 	"skipped_devices": skipped,
 	"roles": roles,
 	"interfaces": interfaces,
-	"violations": [], #DO LATER !!!!!!!!!!!!!!!!!
-	"compliant": sorted(d.id for d in devices),
+	"violations": violations,
+	"compliant": compliant
 	}
 
 
-def print_summary(report):
+def print_summary(report): #Tier 1
 	"""Prints a short summary of the audit"""
 
 	print(f"Site: {report['site']} - {report['total_devices']} devices "
 		f"({report['skipped_devices']} skipped), "
 		f"{len(report['violations'])} violations")
 
-def main(argv):
+def main(argv): #Tier 1
 	"""Runs the audit, returns exit code"""
 	if len(argv) != 3:
 		print("Usage: python pa2.py, DEVICES.xml, POLICY.yaml")
@@ -144,5 +165,5 @@ def main(argv):
 	print_summary(report)
 	return 0
 
-if __name__ == "__main__":
+if __name__ == "__main__": #Tier 1
 	sys.exit(main(sys.argv))
