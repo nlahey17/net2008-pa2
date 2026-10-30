@@ -94,7 +94,30 @@ def load_policy(path): #Tier 1
 	
 	return data
 
-def device_violations(device, policy): #Tier 2
+def version_splitter(version): #Tier 3
+	"""Splits "15.10" into [15, 10] to compare part by part"""
+
+	parts = []
+	for piece in version.split("."):
+		if piece == "":
+			parts.append(0) #if a piece is empty/typo, convert it to a 0
+		else:
+			parts.append(int(piece))
+	return parts
+
+def is_older(found, required): #Tier 3
+	"""Returns true if the found version is older than the required version given.
+	Pads lists given until equal length -> 9.1.10 vs 9.2 becomes 9.1.10 vs 9.2.0"""
+	
+	found_parts = version_splitter(found)
+	required_parts = version_splitter(required)
+	while len(found_parts) < len(required_parts): 
+		found_parts.append(0)
+	while len(required_parts) < len(found_parts):
+		required_parts.append(0)
+	return found_parts < required_parts
+	
+def device_violations(device, policy): #Tier 2 + 3
 	"""Returns a list of violations for a device"""
 
 	violations = []
@@ -110,6 +133,10 @@ def device_violations(device, policy): #Tier 2
 	down_count = device.interfaces_down()
 	if "max_down_interfaces" in policy and down_count > policy ["max_down_interfaces"]:
 		violations.append({"device": device.id, "type": "too_many_down", "down": down_count})
+
+	required = str(policy["min_os"][device.role])
+	if is_older(device.os_version, required):
+		violations.append({"device": device.id, "type": "os_outdated", "found": device.os_version, "required": required})
 
 	return violations
 
