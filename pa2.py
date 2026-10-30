@@ -127,16 +127,17 @@ def device_violations(device, policy): #Tier 2 + 3
 			violations.append({"device": device.id, "type": "unknown_role", "role": device.role})
 			return violations
 
+		required = str(policy["min_os"][device.role])
+		if is_older(device.os_version, required):
+			violations.append({"device": device.id, "type": "os_outdated", "found": device.os_version, "required": required})
+
+
 	if policy.get("require_owner") is True and device.owner == "":
 		violations.append({"device": device.id, "type": "missing_owner"})
 
 	down_count = device.interfaces_down()
 	if "max_down_interfaces" in policy and down_count > policy ["max_down_interfaces"]:
 		violations.append({"device": device.id, "type": "too_many_down", "down": down_count})
-
-	required = str(policy["min_os"][device.role])
-	if is_older(device.os_version, required):
-		violations.append({"device": device.id, "type": "os_outdated", "found": device.os_version, "required": required})
 
 	return violations
 
@@ -185,7 +186,7 @@ def print_summary(report): #Tier 1
 def main(argv): #Tier 1
 	"""Runs the audit, returns exit code"""
 	if len(argv) != 3:
-		print("Usage: python pa2.py, DEVICES.xml, POLICY.yaml")
+		print("usage: python pa2.py DEVICES.xml POLICY.yaml")
 		return 2
 	try: 
 		site, devices, skipped = load_inventory(argv[1])
